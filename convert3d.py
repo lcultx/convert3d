@@ -1,6 +1,9 @@
 import sys
 import os
 from Dice3DS import dom3ds
+import zlib
+import StringIO
+import struct
 
 class Model(object):
     def __init__(self,filename):
@@ -8,24 +11,20 @@ class Model(object):
         self._shape = None
 
     def SetFilename(self, filename):
-        print filename
-        if not os.path.isfile(filename):
-            print "Error: file %s not found."%filename
-            self._filename = None
-        else:
-            self._filename = filename
+        self._filename = filename
 
     def ReadFile(self):
-        pass
+         if not os.path.isfile(self._filename):
+            print "Error: file %s not found."% self._filename
 
     def WriteFile(self):
         pass
-
     def GetShape(self):
-        pass
-
+        self.ReadFile()
+        return self._shape
     def SetShape(self, aShape):
-        pass
+        self._shape = aShape
+
 
 class Shape(object):
     pass
@@ -33,12 +32,19 @@ class Shape(object):
 class z3DS(Model):
     def ReadFile(self):
         dom = dom3ds.read_3ds_file(self._filename,tight=False)
-        pass
+        for j,d_nobj in enumerate(dom.mdata.objects):
+            if type(d_nobj.obj) != dom3ds.N_TRI_OBJECT:
+                continue
+            for d_point in d_nobj.obj.points.array:
+                print d_point
+                pass
+            d_texverts = [ tuple(tpt) for tpt in d_nobj.obj.texverts.array ]
+            for d_face in d_nobj.obj.faces.array:
+                pass
+            for k,d_material in enumerate(d_nobj.obj.faces.materials):
+                pass
+
     def WriteFile(self):
-        pass
-    def GetShape(self):
-        pass
-    def SetShape(self, aShape):
         pass
 
 class DAE(Model):
@@ -46,19 +52,11 @@ class DAE(Model):
         pass
     def WriteFile(self):
         pass
-    def GetShape(self):
-        pass
-    def SetShape(self, aShape):
-        pass
 
 class OBJ(Model):
     def ReadFile(self):
         pass
     def WriteFile(self):
-        pass
-    def GetShape(self):
-        pass
-    def SetShape(self, aShape):
         pass
 
 class STL(Model):
@@ -66,19 +64,11 @@ class STL(Model):
         pass
     def WriteFile(self):
         pass
-    def GetShape(self):
-        pass
-    def SetShape(self, aShape):
-        pass
 
 class THREE(Model):
     def ReadFile(self):
         pass
     def WriteFile(self):
-        pass
-    def GetShape(self):
-        pass
-    def SetShape(self, aShape):
         pass
 
 class AWD(Model):
@@ -86,19 +76,41 @@ class AWD(Model):
         pass
     def WriteFile(self):
         pass
-    def GetShape(self):
-        pass
-    def SetShape(self, aShape):
-        pass
 
 class SWM(Model):
+    def compressWrite(self,io, dst, level=9):
+        dst = open(dst, 'wb')
+        compress = zlib.compressobj(level)
+        data = io.read(1024)
+        while data:
+            dst.write(compress.compress(data))
+            data = io.read(1024)
+        dst.write(compress.flush())
+    def decompressRead(self,infile):
+        io = StringIO.StringIO()
+        infile = open(infile, 'rb')
+        decompress = zlib.decompressobj()
+        data = infile.read(1024)
+        print type(data)
+        while data:
+            io.write(decompress.decompress(data))
+            data = infile.read(1024)
+        io.write(decompress.flush())
+        io.seek(0)
+        return io
+
     def ReadFile(self):
-        pass
+        io = self.decompressRead(self._filename)
+        obj_number = struct.unpack("!I",io.read(4))[0]
+        for i in range(0,obj_number):
+            index_number = struct.unpack("!I",io.read(4))[0]
+            for j in range(0,index_number):
+                print struct.unpack("!I",io.read(4))[0]
+            point_number = struct.unpack("!I",io.read(4))[0]
+            for j in range(0,point_number):
+                print struct.unpack("!d",io.read(8))[0]
+
     def WriteFile(self):
-        pass
-    def GetShape(self):
-        pass
-    def SetShape(self, aShape):
         pass
 
 def main():
